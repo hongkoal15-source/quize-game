@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>궁극의 퀴즈 게임</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: white;
+  transition: background 0.8s;
+}
+.container {
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 20px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 15px;
+}
+input, button {
+  padding: 10px;
+  font-size: 16px;
+}
+button { cursor: pointer; }
+</style>
+</head>
+
+<body>
+
+<audio id="bgm" loop autoplay></audio>
+
+<div class="container">
+  <h1>🔥 상식 퀴즈 🔥</h1>
+  <h2 id="tier">티어: 나무</h2>
+  <p id="question"></p>
+  <input id="answer" placeholder="정답 입력">
+  <br><br>
+  <button onclick="submitAnswer()">제출</button>
+  <p id="result"></p>
+  <p>점수: <span id="score">0</span></p>
+  <p>연속: <span id="combo">0</span></p>
+</div>
+
+<script>
+/* ================= 상식 문제 50개 ================= */
+const quiz = [
+  {q:"대한민국의 수도는?",a:"서울"},
+  {q:"태양계에서 가장 큰 행성은?",a:"목성"},
+  {q:"한글을 만든 왕은?",a:"세종대왕"},
+  {q:"지구의 위성은?",a:"달"},
+  {q:"물의 화학식은?",a:"H2O"},
+  {q:"일본의 수도는?",a:"도쿄"},
+  {q:"미국의 수도는?",a:"워싱턴"},
+  {q:"지구는 태양계에서 몇 번째 행성?",a:"3"},
+  {q:"태극기의 가운데 문양은?",a:"태극"},
+  {q:"태양은 어떤 천체인가?",a:"항성"},
+
+  {q:"세계에서 가장 큰 바다는?",a:"태평양"},
+  {q:"피사의 사탑이 있는 나라는?",a:"이탈리아"},
+  {q:"올림픽은 몇 년마다 열리나?",a:"4"},
+  {q:"사람의 심장은 어느 쪽에 있는가?",a:"왼쪽"},
+  {q:"무지개의 색은 몇 가지?",a:"7"},
+  {q:"세계에서 가장 높은 산은?",a:"에베레스트"},
+  {q:"지구의 대기 중 가장 많은 기체는?",a:"질소"},
+  {q:"컴퓨터의 뇌라 불리는 부품은?",a:"CPU"},
+  {q:"바다의 평균 염분은 약 몇 퍼센트?",a:"3.5"},
+  {q:"대한민국의 국화는?",a:"무궁화"},
+
+  {q:"인간의 혈액형은 몇 종류?",a:"4"},
+  {q:"빛의 삼원색은?",a:"빨강초록파랑"},
+  {q:"사과가 떨어지며 발견된 법칙은?",a:"만유인력"},
+  {q:"세계 최초의 인공위성은?",a:"스푸트니크"},
+  {q:"지구에서 가장 큰 대륙은?",a:"아시아"},
+  {q:"우리나라의 국보 1호는?",a:"숭례문"},
+  {q:"달은 지구를 도는 데 며칠이 걸리는가?",a:"27"},
+  {q:"세계에서 가장 긴 강은?",a:"나일강"},
+  {q:"피카소의 국적은?",a:"스페인"},
+  {q:"인터넷의 기본 통신 규약은?",a:"TCPIP"},
+
+  {q:"대한민국의 법정 수도는?",a:"서울"},
+  {q:"사람의 몸에서 가장 큰 장기는?",a:"피부"},
+  {q:"태양계 행성의 수는?",a:"8"},
+  {q:"이순신 장군의 배는?",a:"거북선"},
+  {q:"지구의 자전축 기울기는 약 몇 도?",a:"23.5"},
+  {q:"백열전구의 필라멘트 재료는?",a:"텅스텐"},
+  {q:"세계에서 가장 많이 쓰이는 언어는?",a:"중국어"},
+  {q:"대한민국 최초의 대통령은?",a:"이승만"},
+  {q:"산소의 원소기호는?",a:"O"},
+  {q:"지구에서 가장 단단한 자연 물질은?",a:"다이아몬드"}
+];
+
+/* ================= 유틸 ================= */
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+shuffle(quiz);
+
+function normalize(t){
+  return t.replace(/\s/g,"").toLowerCase();
+}
+
+/* ================= 상태 ================= */
+let score = Number(localStorage.getItem("score")) || 0;
+let combo = 0;
+let current = 0;
+
+/* ================= 티어 ================= */
+function getTier(s){
+  if(s>=10000) return "신";
+  if(s>=1000) return "우주";
+  if(s>=300) return "방사능 물질";
+  if(s>=200) return "그랜드 핑크 다이아";
+  if(s>=150) return "블루 다이아";
+  if(s>=100) return "레드 다이아";
+  if(s>=66) return "다이아";
+  if(s>=50) return "플래티넘";
+  if(s>=30) return "골드";
+  if(s>=20) return "실버";
+  if(s>=10) return "브론즈";
+  return "나무";
+}
+
+/* ================= 배경 ================= */
+function updateBackground(tier){
+  const bg = {
+    "나무":"#2c3e50",
+    "브론즈":"#8e6e53",
+    "실버":"#bdc3c7",
+    "골드":"linear-gradient(45deg,#f1c40f,#f39c12)",
+    "플래티넘":"linear-gradient(45deg,#1abc9c,#16a085)",
+    "다이아":"linear-gradient(45deg,#74b9ff,#a29bfe)",
+    "레드 다이아":"linear-gradient(45deg,#ff7675,#d63031)",
+    "블루 다이아":"linear-gradient(45deg,#0984e3,#00cec9)",
+    "그랜드 핑크 다이아":"linear-gradient(45deg,#fd79a8,#e84393)",
+    "방사능 물질":"radial-gradient(circle,#00ff00,#003300)",
+    "우주":"radial-gradient(circle,#000,#020024)",
+    "신":"linear-gradient(90deg,gold,white,gold)"
+  };
+  document.body.style.background = bg[tier] || "#000";
+}
+
+/* ================= BGM ================= */
+const bgmList = {
+  "나무":"https://cdn.pixabay.com/audio/2022/10/30/audio_4b2c8fae64.mp3",
+  "브론즈":"https://cdn.pixabay.com/audio/2022/03/15/audio_7b3c7c4a68.mp3",
+  "실버":"https://cdn.pixabay.com/audio/2022/11/03/audio_6f1c2f6f14.mp3",
+  "골드":"https://cdn.pixabay.com/audio/2022/08/01/audio_6b3c4c74c5.mp3",
+  "플래티넘":"https://cdn.pixabay.com/audio/2023/03/06/audio_1f0b9c6d75.mp3",
+  "다이아":"https://cdn.pixabay.com/audio/2023/04/11/audio_6a8b87a0d6.mp3",
+  "레드 다이아":"https://cdn.pixabay.com/audio/2023/09/06/audio_4f5b7f1c6e.mp3",
+  "블루 다이아":"https://cdn.pixabay.com/audio/2023/10/03/audio_7f91e4d3c2.mp3",
+  "그랜드 핑크 다이아":"https://cdn.pixabay.com/audio/2023/11/18/audio_b7e2f4f5c1.mp3",
+  "방사능 물질":"https://cdn.pixabay.com/audio/2023/05/30/audio_9a4c5f6b21.mp3",
+  "우주":"https://cdn.pixabay.com/audio/2023/07/27/audio_f2c7c1e7a9.mp3",
+  "신":"https://cdn.pixabay.com/audio/2023/08/22/audio_0a9f6e9d3c.mp3"
+};
+let currentBgm="";
+
+function updateBGM(tier){
+  const bgm=document.getElementById("bgm");
+  const src=bgmList[tier];
+  if(src && currentBgm!==src){
+    currentBgm=src;
+    bgm.src=src;
+    bgm.volume=0.4;
+    bgm.play();
+  }
+}
+
+/* ================= 게임 ================= */
+function loadQuestion(){
+  if(current >= quiz.length){
+    shuffle(quiz);   // ★ 한 바퀴 끝나면 다시 랜덤
+    current = 0;
+  }
+  question.innerText = quiz[current].q;
+  answer.value="";
+}
+
+function submitAnswer(){
+  const user=normalize(answer.value);
+  const correct=normalize(quiz[current].a);
+
+  if(user===correct){
+    combo++;
+    score+=combo;
+    result.innerText=`정답! +${combo}`;
+  }else{
+    combo=0;
+    result.innerText="틀림!";
+  }
+
+  localStorage.setItem("score",score);
+  scoreSpan.innerText=score;
+  comboSpan.innerText=combo;
+
+  const tier=getTier(score);
+  tierText.innerText="티어: "+tier;
+  updateBackground(tier);
+  updateBGM(tier);
+
+  current++;
+  loadQuestion();
+}
+
+/* ================= 초기화 ================= */
+const scoreSpan=document.getElementById("score");
+const comboSpan=document.getElementById("combo");
+const tierText=document.getElementById("tier");
+
+scoreSpan.innerText=score;
+tierText.innerText="티어: "+getTier(score);
+updateBackground(getTier(score));
+updateBGM(getTier(score));
+loadQuestion();
+</script>
+</body>
+</html>
